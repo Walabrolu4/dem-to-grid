@@ -4,11 +4,11 @@ Reduce a DEM GeoTIFF into a small grid of averaged, height-remapped values.
 
 ## WSL setup
 
-Python is provided by Miniconda's base environment, so no virtualenv is needed.
+Requires Python 3 with the following packages: `rasterio`, `numpy`, `matplotlib`.
 
 ```bash
 cd dem-to-grid
-pip install -r requirements.txt
+pip install rasterio numpy matplotlib
 ```
 
 ## Usage
