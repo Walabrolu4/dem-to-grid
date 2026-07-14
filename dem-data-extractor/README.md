@@ -2,6 +2,8 @@
 
 Extract a DEM GeoTIFF into a raw float32 binary + JSON metadata (and optional PNG preview / CSV), for fast loading in an external runtime such as Unity — no GDAL/rasterio dependency needed at runtime, just a flat binary and a small JSON file.
 
+See [docs.md](docs.md) for a detailed technical explanation of how the script works internally.
+
 ## Setup
 
 ```bash
