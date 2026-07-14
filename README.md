@@ -1,0 +1,75 @@
+# dem-to-grid
+
+Reduce a DEM GeoTIFF into a small grid of averaged, height-remapped values.
+
+## WSL setup
+
+Python is provided by Miniconda's base environment, so no virtualenv is needed.
+
+```bash
+cd dem-to-grid
+pip install -r requirements.txt
+```
+
+## Usage
+
+Auto-detect source elevation range from the DEM:
+
+```bash
+python3 process_dem.py terrain.tif --rows 6 --columns 10 --target-min 0.1 --target-max 2.0
+```
+
+Use a fixed source elevation range:
+
+```bash
+python3 process_dem.py terrain.tif --rows 6 --columns 10 \
+  --source-min 2644 --source-max 6911 --target-min 0.1 --target-max 2.0
+```
+
+Save the grid to CSV or JSON:
+
+```bash
+python3 process_dem.py terrain.tif --rows 6 --columns 10 \
+  --target-min 0.1 --target-max 2.0 --output terrain_grid.csv
+```
+
+## Rounding
+
+Round the remapped height values to the nearest multiple of a step size with `--round-to`, e.g. for a platform that only supports increments of 5:
+
+```bash
+python3 process_dem.py terrain.tif --rows 6 --columns 10 \
+  --target-min 0 --target-max 300 --round-to 5
+```
+
+`191.6` becomes `190`, `193.2` becomes `195`, etc. Applies to console output, `--output`, and `--preview` alike.
+
+## Preview
+
+Save an image showing the square-cell grid overlaid on the DEM: each cell is tinted by a color scale based on its remapped height, labeled with its value, with a color-key colorbar and the crop boundary (red) — so the grid can be sanity-checked visually before running it on the physical platform:
+
+```bash
+python3 process_dem.py terrain.tif --rows 8 --columns 12 \
+  --target-min 0 --target-max 300 --preview preview.png
+```
+
+Overlay it on a *different* georeferenced image instead (e.g. an orthophoto or reference map covering the same area) with `--preview-image`. Both rasters must share the same CRS; the overlay is aligned using each raster's geotransform, so it lines up correctly even if the two images have different pixel resolutions or extents:
+
+```bash
+python3 process_dem.py terrain_dem.tif --rows 8 --columns 12 \
+  --target-min 0 --target-max 300 --preview preview.png --preview-image terrain_photo.tif
+```
+
+The unit label appended to each cell's value and the colorbar defaults to `mm`; override with `--units` (e.g. `--units cm`, or `--units ""` for none).
+
+## Square cells
+
+`--rows`/`--columns` describe a fixed physical display grid (e.g. a pin/actuator array under a projector). Since the DEM's pixel resolution and aspect ratio can differ from that grid, the script automatically **center-crops** the DEM before averaging so every output cell corresponds to a real-world **square** patch of terrain, rather than a rectangle stretched to fit:
+
+- It computes the largest square cell size that fits within the DEM's real-world extent (using the raster's pixel resolution), then crops off any excess margin evenly from both sides of the longer axis.
+- If the crop changes the DEM's dimensions, a line is printed reporting the original/cropped pixel sizes and the resulting cell size.
+- If the DEM's CRS is **geographic** (degrees, e.g. EPSG:4326) rather than **projected** (meters, e.g. UTM), a warning is printed: cells will be square in degrees, not true ground meters, because a degree of longitude and a degree of latitude cover different distances. Reproject the DEM to a projected CRS (e.g. `gdalwarp -t_srs EPSG:32633 in.tif out.tif`) for physically accurate squares.
+
+Notes:
+- Grid cells with no valid (non-nodata) source pixels are output as `NaN` / empty CSV cells / `null` in JSON.
+- Values outside a user-supplied `--source-min`/`--source-max` are clamped to the target range.
